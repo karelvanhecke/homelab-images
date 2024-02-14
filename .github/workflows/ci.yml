@@ -1,0 +1,104 @@
+name: Continuous integration
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-changes:
+    name: Check changes
+    runs-on: ubuntu-latest
+    outputs:
+      ansible: ${{ steps.changes.outputs.ansible }}
+      shell: ${{ steps.changes.outputs.shell }}
+      shell_files: ${{ join(fromJSON(steps.changes.outputs.shell_files), ' ') }}
+      packer: ${{ steps.changes.outputs.packer }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Check changes
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          list-files: json
+          filters: |
+            ansible:
+              - 'ansible/**'
+            shell:
+              - '*.sh'
+              - '**/*.sh'
+            packer:
+              - '*.hcl'
+
+  ansible-lint:
+    name: Lint Ansible
+    needs: check-changes
+    runs-on: ubuntu-latest
+    if: ${{ needs.check-changes.outputs.ansible == 'true' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Run ansible-lint
+        uses: ansible/ansible-lint@v24
+
+  shellcheck:
+    name: Lint shellscripts
+    needs: check-changes
+    runs-on: ubuntu-latest
+    if: ${{ needs.check-changes.outputs.shell == 'true' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Run shellcheck
+        uses: ./.github/actions/shellcheck.yml
+        with:
+          scripts: ${{ needs.check-changes.outputs.shell_files }}
+
+  packer-validate:
+    name: Validate Packer template
+    needs: check-changes
+    runs-on: ubuntu-latest
+    if: ${{ needs.check-changes.outputs.ansible == 'true' || needs.check-changes.outputs.packer == 'true' }}
+    strategy:
+      matrix:
+        VARIANT:
+          - base
+          - router
+          - nameserver
+    steps:
+      - name: Setup packer
+        uses: ./.github/actions/setup-packer.yml
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Initialize Packer
+        run: make init
+      - name: Validate Packer template
+        run: make validate VARIANT=${{ matrix.VARIANT }}
+
+  packer-build:
+    name: Build Packer template
+    needs: ["ansible-lint", "shellcheck", "packer-validate"]
+    if: |
+      (needs.ansible-lint.result == 'success' || needs.ansible-lint.result == 'skipped') &&
+      (needs.shellcheck.result == 'success' || needs.ansible-lint.result == 'skipped') &&
+      needs.packer-validate.result == 'success'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        VARIANT:
+          - base
+          - router
+          - nameserver
+    env:
+      PKR_VAR_cpus: 2
+      PKR_VAR_memory: 4096
+    steps:
+      - name: Setup packer
+        uses: ./.github/actions/setup-packer.yml
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Initialize Packer
+        run: make init
+      - name: Build Packer template
+        run: make build VARIANT=${{ matrix.VARIANT }}
