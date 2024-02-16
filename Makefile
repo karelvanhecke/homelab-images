@@ -1,25 +1,22 @@
 VERSION := $(shell git rev-parse --short HEAD)
-TEMPLATE = base
-PACKER_LOG = 1
-PACKER_VALIDATE_COMMAND = PACKER_LOG=$(PACKER_LOG) packer validate -var "version=$(VERSION)"
-PACKER_BUILD_COMMAND = PACKER_LOG=$(PACKER_LOG) packer build -var "version=$(VERSION)"
+BUILDER = qemu
+PACKER_VALIDATE = packer validate -var "version=$(VERSION)"
+PACKER_BUILD = packer build -var "version=$(VERSION)"
 
-.PHONY: all init validate build
-all: init validate build
+.PHONY: all init validate-all build-all validate build
+all: init validate-all build-all
 
 init:
-	packer init .
+	@packer init .
+
+validate-all:
+	@$(PACKER_VALIDATE) .
+
+build-all:
+	@$(PACKER_BUILD) .
 
 validate:
-	@if [ "$(TEMPLATE)" = "base" ]; then \
-		$(PACKER_VALIDATE_COMMAND) .; \
-	else \
-		$(PACKER_VALIDATE_COMMAND) -var-file=$(TEMPLATE).pkrvars.hcl .; \
-	fi
+	@$(PACKER_VALIDATE) -only "$(BUILDER).$(VARIANT)" .
 
 build:
-	@if [ "$(TEMPLATE)" = "base" ]; then \
-		$(PACKER_BUILD_COMMAND) .; \
-	else \
-		$(PACKER_BUILD_COMMAND) -var-file=$(TEMPLATE).pkrvars.hcl .; \
-	fi
+	@$(PACKER_BUILD) -only "$(BUILDER).$(VARIANT)" .

@@ -1,0 +1,15 @@
+---
+- name: Install frr
+  ansible.builtin.apt:
+    name: "{{ pkgs }}"
+    state: present
+  vars:
+    pkgs:
+      - frr
+      - frr-pythontools
+
+- name: Make sure forwarding is enabled
+  ansible.builtin.copy:
+    src: 10-forwarding.conf
+    dest: /etc/sysctl.d/10-forwarding.conf
+    mode: "0644"

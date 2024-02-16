@@ -1,0 +1,15 @@
+{% if not immutable %}
+apt:
+  generate_mirrorlists: true
+
+{% endif %}
+system_info:
+  default_user:
+    name: deploy
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: True
+    gecos: deploy user
+    groups: [adm, audio, cdrom, dialout, dip, floppy, plugdev, sudo, video]
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    shell: /bin/bash

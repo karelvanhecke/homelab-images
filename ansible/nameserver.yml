@@ -1,0 +1,7 @@
+---
+- name: Nameserver image provisioning
+  hosts: nameserver
+  roles:
+    - baseimage
+    - nameserver
+    - sysprep
