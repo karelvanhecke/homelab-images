@@ -40,9 +40,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Run ansible-lint
-        uses: ansible/ansible-lint@v24
+        uses: ./.github/actions/ansible-lint
         with:
-          working_directory: ansible
+          target: ansible
 
   shellcheck:
     name: Lint shellscripts
