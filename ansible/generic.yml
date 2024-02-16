@@ -1,0 +1,6 @@
+---
+- name: Generic image provisioning
+  hosts: generic
+  roles:
+    - baseimage
+    - sysprep

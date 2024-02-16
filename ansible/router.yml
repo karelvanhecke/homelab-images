@@ -1,0 +1,7 @@
+---
+- name: Router image provisioning
+  hosts: router
+  roles:
+    - baseimage
+    - router
+    - sysprep

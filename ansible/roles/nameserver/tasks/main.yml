@@ -1,0 +1,93 @@
+---
+- name: Install bind9
+  ansible.builtin.apt:
+    name: bind9
+    state: present
+
+- name: Stop bind9
+  ansible.builtin.systemd:
+    name: named
+    state: stopped
+
+- name: Remove rndc.key
+  ansible.builtin.file:
+    path: /etc/bind/rndc.key
+    state: absent
+
+- name: Find files in bind cache
+  ansible.builtin.find:
+    paths: /var/cache/bind
+    file_type: file
+  register: cache
+
+- name: Remove bind cache files
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ cache.files }}"
+
+- name: Create named systemd service config directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/named.service.d
+    state: directory
+    mode: "0755"
+
+- name: Make dir for init-zonefiles
+  ansible.builtin.file:
+    path: /etc/bind/init-zonefiles
+    state: directory
+    mode: "0755"
+
+- name: Install init-zonefiles script
+  ansible.builtin.copy:
+    src: init-zonefiles.sh
+    dest: /usr/local/bin/init-zonefiles
+    mode: "0755"
+
+- name: Copy bind pre run tasks
+  ansible.builtin.copy:
+    src: 10-pre-run-tasks.conf
+    dest: /etc/systemd/system/named.service.d/10-pre-run-tasks.conf
+    mode: "0644"
+
+- name: Install frr for bgp anycasting
+  ansible.builtin.apt:
+    name: "{{ pkgs }}"
+    state: present
+  vars:
+    pkgs:
+      - frr
+      - frr-pythontools
+
+- name: Stop frr
+  ansible.builtin.systemd:
+    name: frr.service
+    state: stopped
+
+- name: Enable the bgp daemon
+  ansible.builtin.copy:
+    src: daemons
+    dest: /etc/frr/daemons
+    owner: frr
+    group: frr
+    mode: "0640"
+
+- name: Truncate frr.conf
+  ansible.builtin.command: truncate -s0 /etc/frr/frr.conf
+  changed_when: true
+
+- name: Create frr service override dir
+  ansible.builtin.file:
+    path: /etc/systemd/system/frr.service.d
+    state: directory
+    mode: "0755"
+
+- name: Copy frr anycast systemd service overrides
+  ansible.builtin.copy:
+    src: 10-anycast.conf
+    dest: /etc/systemd/system/frr.service.d/10-anycast.conf
+    mode: "0644"
+
+- name: Daemon reload
+  ansible.builtin.systemd:
+    daemon_reload: true
