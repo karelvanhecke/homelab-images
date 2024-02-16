@@ -1,4 +1,4 @@
-name: Lint shellscripts
+name: Shellcheck
 description: Run shellcheck on shellscripts
 
 inputs:
@@ -10,6 +10,8 @@ runs:
   using: composite
   steps:
     - name: Setup shellcheck
-        run: sudo apt update && sudo apt install shellcheck -y
+      run: sudo apt update && sudo apt install shellcheck -y
+      shell: bash
     - name: Run shellcheck
       run: shellcheck ${{ inputs.scripts }}
+      shell: bash
