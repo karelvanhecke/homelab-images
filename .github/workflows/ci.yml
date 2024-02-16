@@ -41,6 +41,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Run ansible-lint
         uses: ansible/ansible-lint@v24
+        with:
+          working_directory: ansible
 
   shellcheck:
     name: Lint shellscripts
@@ -51,7 +53,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Run shellcheck
-        uses: ./.github/actions/shellcheck.yml
+        uses: ./.github/actions/shellcheck
         with:
           scripts: ${{ needs.check-changes.outputs.shell_files }}
 
@@ -67,10 +69,10 @@ jobs:
           - router
           - nameserver
     steps:
-      - name: Setup packer
-        uses: ./.github/actions/setup-packer.yml
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Setup packer
+        uses: ./.github/actions/setup-packer
       - name: Initialize Packer
         run: make init
       - name: Validate Packer template
@@ -94,10 +96,10 @@ jobs:
       PKR_VAR_cpus: 2
       PKR_VAR_memory: 4096
     steps:
-      - name: Setup packer
-        uses: ./.github/actions/setup-packer.yml
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Setup packer
+        uses: ./.github/actions/setup-packer
       - name: Initialize Packer
         run: make init
       - name: Build Packer template
