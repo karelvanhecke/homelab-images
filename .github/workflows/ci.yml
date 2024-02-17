@@ -104,3 +104,16 @@ jobs:
         run: make init
       - name: Build Packer template
         run: make build VARIANT=${{ matrix.VARIANT }}
+
+  check-results:
+    name: Check results
+    needs: ["packer-build"]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Result succesful
+        if: ${{ needs.packer-build.result == 'success' || needs.packer-build.result == 'skipped' }}
+        run: exit 0
+      - name: Result failure
+        if: ${{ needs.packer-build.result == 'cancelled' || needs.packer-build.result == 'failure' }}
+        run: exit 1
