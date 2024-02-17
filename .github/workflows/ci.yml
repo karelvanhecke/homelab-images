@@ -104,6 +104,11 @@ jobs:
         run: make init
       - name: Build Packer template
         run: make build VARIANT=${{ matrix.VARIANT }}
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.VARIANT }}-${{ github.sha }}
+          path: 'images/*'
 
   check-results:
     name: Check results
