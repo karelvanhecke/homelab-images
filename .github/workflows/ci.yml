@@ -141,15 +141,57 @@ jobs:
             images/*
             !images/efivars.fd
 
+  trivy-scan:
+    name: Scan Packer build artifacts
+    needs: ["packer-check-changes", "packer-build"]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        variant: ${{ fromJSON(needs.packer-check-changes.outputs.variants) }}
+    steps:
+      - name: Setup qemu-utils
+        run: sudo apt-get update && sudo apt-get install -y qemu-utils
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.variant }}-${{ github.sha }}
+          path: artifacts
+      - name: Convert qcow2 image to raw format
+        run: |
+          mkdir raw-artifacts
+          artifact=$(ls artifacts/*.qcow2)
+          qemu-img convert -f qcow2 -O raw $artifact raw-artifacts/$(basename $artifact | sed 's/\.qcow2$/.raw/')
+      - name: Mount raw image
+        run: |
+          artifact=$(ls raw-artifacts/*.raw)
+          sudo losetup -P /dev/loop0 $artifact
+          mkdir rootfs
+          sudo mount /dev/loop0p4 rootfs
+          sudo mount /dev/loop0p3 rootfs/boot
+          sudo mount /dev/loop0p2 rootfs/boot/efi
+      - name: Run trivy scan on rootfs
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: rootfs
+          scan-ref: rootfs
+          ignore-unfixed: true
+          format: sarif
+          output: ${{ matrix.variant }}.sarif
+      - name: Upload scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ matrix.variant }}.sarif
+          category: ${{ matrix.variant }}
+
   check-results:
     name: Check results
-    needs: ["packer-build"]
+    needs: ["trivy-scan"]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - name: Result succesful
-        if: ${{ needs.packer-build.result == 'success' || needs.packer-build.result == 'skipped' }}
+        if: ${{ needs.trivy-scan.result == 'success' || needs.trivy-scan.result == 'skipped' }}
         run: exit 0
       - name: Result failure
-        if: ${{ needs.packer-build.result == 'cancelled' || needs.packer-build.result == 'failure' }}
+        if: ${{ needs.trivy-scan.result == 'cancelled' || needs.trivy-scan.result == 'failure' }}
         run: exit 1
