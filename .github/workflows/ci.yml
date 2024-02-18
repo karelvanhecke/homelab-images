@@ -95,7 +95,6 @@ jobs:
     name: Validate Packer template
     needs: packer-check-changes
     runs-on: ubuntu-latest
-    if: ${{ needs.packer-check-changes.outputs.variants != '[]' }}
     strategy:
       matrix:
         variant: ${{ fromJSON(needs.packer-check-changes.outputs.variants) }}
@@ -185,13 +184,18 @@ jobs:
 
   check-results:
     name: Check results
-    needs: ["trivy-scan"]
+    needs: ["packer-validate","packer-build","trivy-scan"]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
-      - name: Result succesful
-        if: ${{ needs.trivy-scan.result == 'success' || needs.trivy-scan.result == 'skipped' }}
-        run: exit 0
       - name: Result failure
-        if: ${{ needs.trivy-scan.result == 'cancelled' || needs.trivy-scan.result == 'failure' }}
+        if: |
+          needs.packer-validate.result == 'failed' ||
+          needs.packer-validate.result == 'cancelled' ||
+          needs.packer-build.result == 'failed' ||
+          needs.packer-build.result == 'cancelled' ||
+          needs.trivy-scan.result == 'failed' ||
+          needs.trivy-scan.result == 'cancelled'
         run: exit 1
+      - name: Result succesful
+        run: exit 0
