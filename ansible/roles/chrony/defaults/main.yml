@@ -1,0 +1,3 @@
+---
+chrony_ptp_kvm: true
+chrony_dhcp: false

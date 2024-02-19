@@ -1,0 +1,14 @@
+---
+- name: Remove linux images
+  ansible.builtin.apt:
+    name: linux-image-*
+    state: absent
+    purge: true
+    force: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Install linux cloud kernel
+  ansible.builtin.apt:
+    name: linux-image-cloud-{{ base_architecture[ansible_architecture] }}
+    state: present

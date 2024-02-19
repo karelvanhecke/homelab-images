@@ -1,94 +1,4 @@
 ---
-- name: Install networking packages
-  ansible.builtin.apt:
-    name: "{{ pkgs }}"
-    state: present
-  vars:
-    pkgs:
-      - netplan.io
-      - systemd-resolved
-      - libnss-resolve
-
-- name: Make sure networking services are enabled
-  ansible.builtin.systemd:
-    name: "{{ item }}"
-    enabled: true
-  with_items:
-    - systemd-networkd
-    - systemd-resolved
-
-- name: Create resolved.conf.d
-  ansible.builtin.file:
-    path: /etc/systemd/resolved.conf.d
-    state: directory
-    mode: "0755"
-
-- name: Disable llmnr
-  ansible.builtin.copy:
-    src: 10-disable-llmnr.conf
-    dest: /etc/systemd/resolved.conf.d/10-disable-llmnr.conf
-    mode: "0644"
-
-- name: Disable stub
-  ansible.builtin.copy:
-    src: 10-disable-stub.conf
-    dest: /etc/systemd/resolved.conf.d/10-disable-stub.conf
-    mode: "0644"
-
-- name: Disable mdns
-  ansible.builtin.copy:
-    src: 10-disable-mdns.conf
-    dest: /etc/systemd/resolved.conf.d/10-disable-mdns.conf
-    mode: "0644"
-
-- name: Cleanup files
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  with_items:
-    - /etc/apt/apt.conf.d/00CDMountPoint
-    - /etc/apt/apt.conf.d/00trustcdrom
-    - /etc/apt/sources.list~
-
-- name: Copy sources.list
-  ansible.builtin.copy:
-    src: sources.list
-    dest: /etc/apt/sources.list
-    mode: "0644"
-
-- name: Disable apt timers
-  ansible.builtin.systemd:
-    name: "{{ item }}"
-    state: stopped
-    enabled: false
-  with_items:
-    - apt-daily.timer
-    - apt-daily-upgrade.timer
-
-- name: Setup apt mirrors
-  when: not immutable
-  block:
-    - name: Create mirror dir
-      ansible.builtin.file:
-        path: /etc/apt/mirrors
-        state: directory
-        mode: "0755"
-
-    - name: Copy mirrorfiles
-      ansible.builtin.copy:
-        src: "{{ item }}"
-        dest: /etc/apt/mirrors/
-        mode: "0644"
-      with_items:
-        - debian.list
-        - debian-security.list
-
-    - name: Copy debian sources
-      ansible.builtin.copy:
-        src: debian.sources
-        dest: /etc/apt/sources.list.d/debian.sources
-        mode: "0644"
-
 - name: Truncate machine-id
   ansible.builtin.command: truncate -s0 /etc/machine-id
   changed_when: true
@@ -115,31 +25,17 @@
     path: /var/log/installer
     state: absent
 
-- name: Purge obsolete networking packages
-  ansible.builtin.apt:
-    name: "{{ pkgs }}"
-    state: absent
-    purge: true
-  vars:
-    pkgs:
-      - ifupdown
-
-- name: Replace interfaces file
-  ansible.builtin.file:
-    path: /etc/network
-    state: absent
-
-- name: Stop systemd-resolved
-  ansible.builtin.systemd:
-    name: systemd-resolved
-    state: stopped
-
 - name: Link resolv.conf to file managed by systemd-resolved
   ansible.builtin.file:
     src: /run/systemd/resolve/resolv.conf
     dest: /etc/resolv.conf
     state: link
     force: true
+
+- name: Remove resolv.conf backup
+  ansible.builtin.file:
+    path: /etc/.resolv.conf.systemd-resolved.bak
+    state: absent
 
 - name: Reset hosts file
   ansible.builtin.copy:
@@ -152,6 +48,21 @@
     path: /etc/hostname
     state: absent
 
+- name: Find all apt sources
+  ansible.builtin.find:
+    file_type: file
+    paths: /etc/apt/sources.list.d
+    recurse: true
+  when: sysprep_immutable
+  register: apt_sources
+
+- name: Remove all apt sources
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ apt_sources.files }}"
+  when: apt_sources is not ansible.builtin.skipped
+
 - name: Clean apt cache
   ansible.builtin.apt:
     clean: true
@@ -161,13 +72,13 @@
     file_type: any
     paths: /var/lib/apt/lists
     recurse: true
-  register: apt
+  register: apt_lists
 
-- name: Remove all apt lists files
+- name: Remove all apt lists
   ansible.builtin.file:
     path: "{{ item.path }}"
     state: absent
-  loop: "{{ apt.files }}"
+  loop: "{{ apt_lists.files }}"
 
 - name: Remove cdrom lists
   ansible.builtin.file:

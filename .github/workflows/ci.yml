@@ -29,7 +29,8 @@ jobs:
               - '*.sh'
               - '**/*.sh'
             packer:
-              - '*.hcl'
+              - '*.pkr.hcl'
+              - 'http/**'
 
   ansible-lint:
     name: Lint ansible
@@ -72,24 +73,25 @@ jobs:
         id: changes
         with:
           filters: |
-            generic:
+            base: &base
               - '*.pkr.hcl'
-              - 'ansible/roles/baseimage/**'
-              - 'ansible/roles/sysprep/**'
-              - 'ansible/host_vars/generic.yml'
-              - 'ansible/generic.yml'
+              - 'http/**'
+              - ansible/roles/apt
+              - ansible/roles/base
+              - ansible/roles/chrony
+              - ansible/roles/cloud-init
+              - ansible/roles/networking
+              - ansible/roles/sysprep
+              - ansible/base.yml
+              - ansible/sysprep.yml
             router:
-              - '*.pkr.hcl'
-              - 'ansible/roles/baseimage/**'
-              - 'ansible/roles/sysprep/**'
-              - 'ansible/host_vars/router.yml'
-              - 'ansible/router.yml'
+              - *base
+              - ansible/roles/router
+              - ansible/router.yml
             nameserver:
-              - '*.pkr.hcl'
-              - 'ansible/roles/baseimage/**'
-              - 'ansible/roles/sysprep/**'
-              - 'ansible/host_vars/nameserver.yml'
-              - 'ansible/nameserver.yml'
+              - *base
+              - ansible/roles/nameserver
+              - ansible/nameserver.yml
 
   packer-validate:
     name: Validate packer template
@@ -98,6 +100,8 @@ jobs:
     strategy:
       matrix:
         variant: ${{ fromJSON(needs.check-packer-changes.outputs.variants) }}
+        exclude:
+          - variant: base
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -105,6 +109,8 @@ jobs:
         uses: ./.github/actions/setup-packer
       - name: Initialize packer
         run: make init
+      - name: Generate ssh key
+        run: make gen-ssh-key
       - name: Validate packer template
         run: make validate VARIANT=${{ matrix.variant }}
 
@@ -112,13 +118,16 @@ jobs:
     name: Build packer template
     needs: ["ansible-lint", "shellcheck", "check-packer-changes","packer-validate"]
     if: |
-      (needs.ansible-lint.result == 'success' || needs.ansible-lint.result == 'skipped') &&
-      (needs.shellcheck.result == 'success' || needs.ansible-lint.result == 'skipped') &&
-      needs.packer-validate.result == 'success'
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.packer-validate.result != 'skipped'
     runs-on: ubuntu-latest
     strategy:
       matrix:
         variant: ${{ fromJSON(needs.check-packer-changes.outputs.variants) }}
+        exclude:
+          - variant: base
     env:
       PKR_VAR_cpus: 2
       PKR_VAR_memory: 4096
@@ -133,6 +142,8 @@ jobs:
         uses: ./.github/actions/setup-ansible
       - name: Initialize packer
         run: make init
+      - name: Generate ssh key
+        run: make gen-ssh-key
       - name: Build packer template
         run: make build VARIANT=${{ matrix.variant }}
       - name: Upload build artifacts
@@ -147,10 +158,17 @@ jobs:
   trivy-scan:
     name: Scan packer build artifacts
     needs: ["check-packer-changes", "packer-build"]
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.packer-build.result != 'skipped'
     runs-on: ubuntu-latest
     strategy:
       matrix:
         variant: ${{ fromJSON(needs.check-packer-changes.outputs.variants) }}
+        exclude:
+          - variant: base
     steps:
       - name: Setup qemu-utils
         run: sudo apt-get update && sudo apt-get install -y qemu-utils
@@ -167,11 +185,12 @@ jobs:
       - name: Mount raw image
         run: |
           artifact=$(ls raw-artifacts/*.raw)
-          sudo losetup -P /dev/loop0 $artifact
+          loopdev=$(sudo losetup -f)
+          sudo losetup -P ${loopdev} $artifact
           mkdir rootfs
-          sudo mount /dev/loop0p4 rootfs
-          sudo mount /dev/loop0p3 rootfs/boot
-          sudo mount /dev/loop0p2 rootfs/boot/efi
+          sudo mount ${loopdev}p4 rootfs
+          sudo mount ${loopdev}p3 rootfs/boot
+          sudo mount ${loopdev}p2 rootfs/boot/efi
       - name: Run trivy scan on rootfs
         uses: aquasecurity/trivy-action@master
         with:
@@ -188,18 +207,14 @@ jobs:
 
   check-results:
     name: Check results
-    needs: ["packer-validate","packer-build","trivy-scan"]
+    needs: ["check-packer-changes","packer-validate","packer-build","trivy-scan"]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - name: Result failure
         if: |
-          needs.packer-validate.result == 'failed' ||
-          needs.packer-validate.result == 'cancelled' ||
-          needs.packer-build.result == 'failed' ||
-          needs.packer-build.result == 'cancelled' ||
-          needs.trivy-scan.result == 'failed' ||
-          needs.trivy-scan.result == 'cancelled'
+            contains(needs.*.result, 'failure') ||
+            contains(needs.*.result, 'cancelled')
         run: exit 1
       - name: Result succesful
         run: exit 0

@@ -1,0 +1,10 @@
+system_info:
+  default_user:
+    name: {{ cloud_init_default_user }}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: True
+    gecos: {{ cloud_init_default_user }} user
+    groups: [adm, audio, cdrom, dialout, dip, floppy, plugdev, sudo, video]
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    shell: /bin/bash

@@ -1,0 +1,78 @@
+---
+- name: Disable apt timers
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  with_items:
+    - apt-daily.timer
+    - apt-daily-upgrade.timer
+
+- name: Strip unnecessary apt configs
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /etc/apt/apt.conf.d/00CDMountPoint
+    - /etc/apt/apt.conf.d/00trustcdrom
+    - /etc/apt/sources.list~
+
+- name: Strip unnecessary packages
+  ansible.builtin.apt:
+    name: "{{ base_strip_packages }}"
+    state: absent
+    purge: true
+    autoremove: true
+
+- name: Remove cdrom from fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '^/dev/sr0'
+    state: absent
+
+- name: Remove cdrom dirs
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /media/cdrom
+    - /media/cdrom0
+
+- name: Run daemon reload after modifying fstab
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Blacklist some modules
+  ansible.builtin.copy:
+    src: blacklist.conf
+    dest: /etc/modprobe.d/blacklist.conf
+    mode: "0644"
+
+- name: Install utilities
+  ansible.builtin.apt:
+    name: "{{ base_utilities }}"
+    state: present
+
+- name: Setup cloud kernel
+  ansible.builtin.include_tasks: cloud_kernel.yml
+  when: base_cloud_kernel
+
+- name: Setup grub cloud
+  ansible.builtin.include_tasks: grub_cloud.yml
+  when: ansible_architecture == "x86_64"
+
+- name: Set grub timeout to 0
+  ansible.builtin.copy:
+    src: 15_timeout.cfg
+    dest: /etc/default/grub.d/15_timeout.cfg
+    mode: "0755"
+
+- name: Update grub config
+  ansible.builtin.command: update-grub
+  changed_when: true
+
+- name: Harden ssh
+  ansible.builtin.copy:
+    src: 10-hardening.conf
+    dest: /etc/ssh/sshd_config.d/10-hardening.conf
+    mode: "0644"

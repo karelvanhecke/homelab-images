@@ -1,0 +1,11 @@
+Types: deb
+URIs: http://deb.debian.org/debian
+Suites: {{ ansible_distribution_release }}{{ ' ' + ansible_distribution_release + '-updates' if apt_enable_stable_updates else '' }}{{ ' ' + ansible_distribution_release + '-backports' if apt_enable_backports else '' }}
+Components: main{{ ' contrib' if apt_enable_contrib else '' }}
+
+{% if apt_enable_security_updates %}
+Types: deb
+URIs: http://deb.debian.org/debian-security
+Suites: {{ ansible_distribution_release }}-security
+Components: main{{ ' contrib' if apt_enable_contrib else '' }}
+{% endif %}

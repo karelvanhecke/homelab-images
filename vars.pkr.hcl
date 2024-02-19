@@ -1,11 +1,23 @@
+locals {
+    ssh_private_key_file = "${path.root}/${var.ssh_key_directory}/id_${var.ssh_key_algorithm}"
+    ssh_public_key_file = "${local.ssh_private_key_file}.pub"
+    preseed_vars = {
+        locale = var.locale
+        timezone = var.timezone
+        keyboard = var.keyboard
+        suite = var.suite
+        authorized_keys = chomp(file(local.ssh_public_key_file))
+    }
+}
+
 variable "iso_url" {
     type = string
-    default = "https://cdimage.debian.org/debian-cd/12.5.0/amd64/iso-cd/debian-12.5.0-amd64-netinst.iso"
+    default = "https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-12.5.0-amd64-netinst.iso"
 }
 
 variable "iso_checksum" {
     type = string
-    default = "file:https://cdimage.debian.org/debian-cd/12.5.0/amd64/iso-cd/SHA256SUMS"
+    default = "sha256:013f5b44670d81280b5b1bc02455842b250df2f0c6763398feb69af1a805a14f"
 }
 
 variable "boot_command" {
@@ -13,7 +25,7 @@ variable "boot_command" {
     default = [
         "c<wait5>",
         "linux /install.amd/vmlinuz auto=true priority=critical ",
-        "url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/debian-12.cfg<enter><wait5>",
+        "url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/preseed.cfg<enter><wait5>",
         "initrd /install.amd/initrd.gz<enter><wait5>",
         "boot<enter><wait5>"
     ]
@@ -61,7 +73,7 @@ variable "boot_wait" {
 
 variable "shutdown_command" {
     type = string
-    default = "shutdown -P now"
+    default = "systemctl start poweroff.target --job-mode=replace-irreversibly --no-block"
 }
 
 variable "ssh_timeout" {
@@ -72,4 +84,34 @@ variable "ssh_timeout" {
 variable "headless" {
     type = bool
     default = true
+}
+
+variable "ssh_key_directory" {
+    type = string
+    default = ".packer-ssh"
+}
+
+variable "ssh_key_algorithm" {
+    type = string
+    default = "ed25519"
+}
+
+variable "timezone" {
+    type = string
+    default = "Europe/Brussels"
+}
+
+variable "keyboard" {
+    type = string
+    default = "be"
+}
+
+variable "locale" {
+    type = string
+    default = "en_US.UTF-8"
+}
+
+variable "suite" {
+    type = string
+    default = "bookworm"
 }

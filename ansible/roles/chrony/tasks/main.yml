@@ -1,0 +1,18 @@
+---
+- name: Install chrony
+  ansible.builtin.apt:
+    name: chrony
+    state: present
+
+- name: Load ptp_kvm module on boot
+  ansible.builtin.copy:
+    src: ptp_kvm.conf
+    dest: /etc/modules-load.d/ptp_kvm.conf
+    mode: "0644"
+  when: chrony_ptp_kvm
+
+- name: Set default chrony configuration
+  ansible.builtin.template:
+    src: chrony.conf.j2
+    dest: /etc/chrony/chrony.conf
+    mode: "0644"

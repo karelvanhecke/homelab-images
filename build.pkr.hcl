@@ -10,14 +10,19 @@ source "qemu" "debian" {
     efi_drop_efivars     = true
     format               = var.format
     headless             = var.headless
-    http_directory       = "${path.root}/http"
+    http_content         = {
+        "/preseed.cfg"   = templatefile(
+            "${path.root}/http/preseed.pkrtpl.hcl",
+            local.preseed_vars
+            )
+    }
     iso_checksum         = var.iso_checksum
     iso_url              = var.iso_url
     memory               = var.memory
     net_device           = "virtio-net"
-    output_directory     = var.output_directory
+    output_directory     = "${path.root}/${var.output_directory}"
     shutdown_command     = var.shutdown_command
-    ssh_private_key_file = "${path.root}/ssh/builder"
+    ssh_private_key_file = local.ssh_private_key_file
     ssh_timeout          = var.ssh_timeout
     ssh_username         = "root"
     disk_discard         = "unmap"
@@ -26,10 +31,6 @@ source "qemu" "debian" {
 }
 
 build {
-    source "qemu.debian" {
-        name = "generic"
-    }
-
     source "qemu.debian" {
         name = "router"
     }

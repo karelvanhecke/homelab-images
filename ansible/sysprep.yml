@@ -1,0 +1,5 @@
+---
+- name: Sysprep playbook
+  hosts: all
+  roles:
+    - sysprep
