@@ -22,11 +22,6 @@ Examples:
 ## Patch version
 The minor version of each variant increases when backwards compatible bug fix or security updates are introduced.
 
-### Generic image versioning matrix
-
-| Image version | Debian version |
-| ------------- | -------------- |
-
 ### Router image versioning matrix
 
 | Image version | Debian version | FRR version |

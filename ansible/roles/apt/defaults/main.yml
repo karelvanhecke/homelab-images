@@ -1,0 +1,5 @@
+---
+apt_enable_stable_updates: true
+apt_enable_security_updates: true
+apt_enable_backports: false
+apt_enable_contrib: false

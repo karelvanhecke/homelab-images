@@ -1,0 +1,21 @@
+---
+- name: Remove grub-efi-amd64
+  ansible.builtin.apt:
+    name: grub-efi-amd64
+    state: absent
+    purge: true
+
+- name: Install grub-cloud-amd64
+  ansible.builtin.apt:
+    name: grub-cloud-amd64
+    state: present
+
+- name: Run efi grub install
+  ansible.builtin.command: >
+    grub-install --removable --target=x86_64-efi --efi-directory=/boot/efi
+    --bootloader-id=debian
+  changed_when: true
+
+- name: Run bios grub install
+  ansible.builtin.command: grub-install --target=i386-pc /dev/sda
+  changed_when: true

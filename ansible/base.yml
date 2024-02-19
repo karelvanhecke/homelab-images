@@ -1,0 +1,9 @@
+---
+- name: Base configuration playbook
+  hosts: all
+  roles:
+    - apt
+    - base
+    - networking
+    - chrony
+    - cloud-init

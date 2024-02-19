@@ -1,7 +1,11 @@
 ---
-- name: Nameserver image provisioning
+- name: Import base configuration playbook
+  ansible.builtin.import_playbook: base.yml
+
+- name: Nameserver playbook
   hosts: nameserver
   roles:
-    - baseimage
     - nameserver
-    - sysprep
+
+- name: Import sysprep playbook
+  ansible.builtin.import_playbook: sysprep.yml

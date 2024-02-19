@@ -1,0 +1,70 @@
+---
+- name: Install networking packages
+  ansible.builtin.apt:
+    name: "{{ pkgs }}"
+    state: present
+  vars:
+    pkgs:
+      - netplan.io
+      - systemd-resolved
+      - libnss-resolve
+
+- name: Make sure networking services are stopped and enabled
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: stopped
+  with_items:
+    - systemd-networkd
+    - systemd-resolved
+
+- name: Restore resolv.conf for now
+  ansible.builtin.file:
+    src: /etc/.resolv.conf.systemd-resolved.bak
+    dest: /etc/resolv.conf
+    state: link
+    force: true
+
+- name: Create resolved.conf.d
+  ansible.builtin.file:
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+    mode: "0755"
+
+- name: Disable llmnr
+  ansible.builtin.copy:
+    src: 10-disable-llmnr.conf
+    dest: /etc/systemd/resolved.conf.d/10-disable-llmnr.conf
+    mode: "0644"
+
+- name: Disable stub
+  ansible.builtin.copy:
+    src: 10-disable-stub.conf
+    dest: /etc/systemd/resolved.conf.d/10-disable-stub.conf
+    mode: "0644"
+
+- name: Disable mdns
+  ansible.builtin.copy:
+    src: 10-disable-mdns.conf
+    dest: /etc/systemd/resolved.conf.d/10-disable-mdns.conf
+    mode: "0644"
+
+- name: Purge obsolete networking packages
+  ansible.builtin.apt:
+    name: "{{ pkgs }}"
+    state: absent
+    purge: true
+  vars:
+    pkgs:
+      - ifupdown
+
+- name: Remove interfaces file
+  ansible.builtin.file:
+    path: /etc/network
+    state: absent
+
+- name: Set ndisc notify
+  ansible.builtin.copy:
+    src: 90-ndisc-notify.conf
+    dest: /etc/sysctl.d/90-ndisc-notify.conf
+    mode: "0644"
