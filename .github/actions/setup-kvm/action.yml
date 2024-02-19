@@ -1,0 +1,17 @@
+name: Setup kvm
+description: Install kvm and modify /dev/kvm permissions
+
+runs:
+  using: composite
+  steps:
+    - name: Install qemu-kvm and ovmf
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y qemu-kvm ovmf
+      shell: bash
+    - name: Modify kvm permissions
+      run: |
+        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --name-match=kvm
+      shell: bash
