@@ -1,0 +1,20 @@
+name: Setup ansible
+description: Install ansible with pip
+
+inputs:
+  version:
+    description: Supported versions 2.14.x, 2.15.x & 2.16.x
+    required: false
+    default: 2.14.*
+
+runs:
+  using: composite
+  steps:
+    - name: Setup python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    - name: Install ansible-core
+      run: pip install --user ansible-core==${{ inputs.version }}
+      shell: bash

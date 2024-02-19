@@ -32,7 +32,7 @@ jobs:
               - '*.hcl'
 
   ansible-lint:
-    name: Lint Ansible
+    name: Lint ansible
     needs: check-changes
     runs-on: ubuntu-latest
     if: ${{ needs.check-changes.outputs.ansible == 'true' }}
@@ -40,12 +40,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Run ansible-lint
-        uses: ./.github/actions/ansible-lint
+        uses: ansible/ansible-lint@v24
         with:
-          target: ansible
+          args: ansible
 
   shellcheck:
-    name: Lint shellscripts
+    name: Shellcheck
     needs: check-changes
     runs-on: ubuntu-latest
     if: ${{ needs.check-changes.outputs.shell == 'true' }}
@@ -57,8 +57,8 @@ jobs:
         with:
           scripts: ${{ needs.check-changes.outputs.shell_files }}
 
-  packer-check-changes:
-    name: Check Packer template changes
+  check-packer-changes:
+    name: Check packer changes
     needs: check-changes
     runs-on: ubuntu-latest
     if: ${{ needs.check-changes.outputs.ansible == 'true' || needs.check-changes.outputs.packer == 'true' }}
@@ -92,25 +92,25 @@ jobs:
               - 'ansible/nameserver.yml'
 
   packer-validate:
-    name: Validate Packer template
-    needs: packer-check-changes
+    name: Validate packer template
+    needs: check-packer-changes
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        variant: ${{ fromJSON(needs.packer-check-changes.outputs.variants) }}
+        variant: ${{ fromJSON(needs.check-packer-changes.outputs.variants) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Setup packer
         uses: ./.github/actions/setup-packer
-      - name: Initialize Packer
+      - name: Initialize packer
         run: make init
-      - name: Validate Packer template
+      - name: Validate packer template
         run: make validate VARIANT=${{ matrix.variant }}
 
   packer-build:
-    name: Build Packer template
-    needs: ["ansible-lint", "shellcheck", "packer-check-changes","packer-validate"]
+    name: Build packer template
+    needs: ["ansible-lint", "shellcheck", "check-packer-changes","packer-validate"]
     if: |
       (needs.ansible-lint.result == 'success' || needs.ansible-lint.result == 'skipped') &&
       (needs.shellcheck.result == 'success' || needs.ansible-lint.result == 'skipped') &&
@@ -118,7 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        variant: ${{ fromJSON(needs.packer-check-changes.outputs.variants) }}
+        variant: ${{ fromJSON(needs.check-packer-changes.outputs.variants) }}
     env:
       PKR_VAR_cpus: 2
       PKR_VAR_memory: 4096
@@ -127,9 +127,13 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup packer
         uses: ./.github/actions/setup-packer
-      - name: Initialize Packer
+      - name: Setup kvm
+        uses: ./.github/actions/setup-kvm
+      - name: Setup ansible
+        uses: ./.github/actions/setup-ansible
+      - name: Initialize packer
         run: make init
-      - name: Build Packer template
+      - name: Build packer template
         run: make build VARIANT=${{ matrix.variant }}
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -141,12 +145,12 @@ jobs:
             !images/efivars.fd
 
   trivy-scan:
-    name: Scan Packer build artifacts
-    needs: ["packer-check-changes", "packer-build"]
+    name: Scan packer build artifacts
+    needs: ["check-packer-changes", "packer-build"]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        variant: ${{ fromJSON(needs.packer-check-changes.outputs.variants) }}
+        variant: ${{ fromJSON(needs.check-packer-changes.outputs.variants) }}
     steps:
       - name: Setup qemu-utils
         run: sudo apt-get update && sudo apt-get install -y qemu-utils

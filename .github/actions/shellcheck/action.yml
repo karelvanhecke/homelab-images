@@ -1,17 +1,24 @@
 name: Shellcheck
-description: Run shellcheck on shellscripts
+description: Setup and run shellcheck
 
 inputs:
+  version:
+    description: Shellcheck version
+    required: false
+    default: stable
   scripts:
-    description: space separated list of shell scripts
+    description: Space separated list of shell scripts
     required: true
 
 runs:
   using: composite
   steps:
     - name: Setup shellcheck
-      run: sudo apt update && sudo apt install shellcheck -y
+      run: |
+        mkdir -p ~/.local/bin
+        curl -sL "https://github.com/koalaman/shellcheck/releases/download/${{ inputs.version }}/shellcheck-${{ inputs.version }}.linux.x86_64.tar.xz" | tar -xJ --strip-components=1 -C ~/.local/bin --exclude=*.txt
+        shellcheck --version
       shell: bash
     - name: Run shellcheck
-      run: shellcheck ${{ inputs.scripts }}
+      run: ~/.local/bin/shellcheck ${{ inputs.scripts }}
       shell: bash
