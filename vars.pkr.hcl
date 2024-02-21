@@ -8,6 +8,19 @@ locals {
         suite = var.suite
         authorized_keys = chomp(file(local.ssh_public_key_file))
     }
+    preseed = templatefile(
+            "${path.root}/http/preseed.pkrtpl.hcl",
+            local.preseed_vars
+            )
+    preseed_checksum = md5(local.preseed)
+    boot_command = [
+        "c<wait5>",
+        "linux /install.amd/vmlinuz auto=true priority=critical ",
+        "url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/preseed.cfg ",
+        "preseed-md5=${local.preseed_checksum}<enter><wait5>",
+        "initrd /install.amd/initrd.gz<enter><wait5>",
+        "boot<enter><wait5>"
+    ]
 }
 
 variable "iso_url" {
@@ -18,17 +31,6 @@ variable "iso_url" {
 variable "iso_checksum" {
     type = string
     default = "sha256:013f5b44670d81280b5b1bc02455842b250df2f0c6763398feb69af1a805a14f"
-}
-
-variable "boot_command" {
-    type = list(string)
-    default = [
-        "c<wait5>",
-        "linux /install.amd/vmlinuz auto=true priority=critical ",
-        "url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/preseed.cfg<enter><wait5>",
-        "initrd /install.amd/initrd.gz<enter><wait5>",
-        "boot<enter><wait5>"
-    ]
 }
 
 variable "format" {

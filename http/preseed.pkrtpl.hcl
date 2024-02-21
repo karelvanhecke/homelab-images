@@ -92,8 +92,8 @@ d-i apt-setup/enable-source-repositories boolean false
 # Keep minimal install
 d-i pkgsel/run_tasksel boolean false
 
-# Do not upgrade after installation
-d-i pkgsel/upgrade select none
+# Keep base system packages up to date
+d-i pkgsel/upgrade select full-upgrade
 
 # Install openssh-server
 d-i pkgsel/include string openssh-server
