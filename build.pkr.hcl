@@ -1,6 +1,6 @@
 source "qemu" "debian" {
     accelerator          = "kvm"
-    boot_command         = var.boot_command
+    boot_command         = local.boot_command
     boot_wait            = var.boot_wait
     communicator         = "ssh"
     cpus                 = var.cpus
@@ -11,10 +11,7 @@ source "qemu" "debian" {
     format               = var.format
     headless             = var.headless
     http_content         = {
-        "/preseed.cfg"   = templatefile(
-            "${path.root}/http/preseed.pkrtpl.hcl",
-            local.preseed_vars
-            )
+        "/preseed.cfg"   = local.preseed
     }
     iso_checksum         = var.iso_checksum
     iso_url              = var.iso_url
