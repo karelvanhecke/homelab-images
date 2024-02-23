@@ -1,0 +1,43 @@
+---
+- name: Install nfs-common
+  ansible.builtin.apt:
+    name: nfs-common
+    state: present
+
+- name: Create nfsmount.conf.d
+  ansible.builtin.file:
+    path: /etc/nfsmount.conf.d
+    state: directory
+    mode: "0755"
+
+- name: Copy default nfsmount.conf
+  ansible.builtin.copy:
+    src: nfsmount.conf
+    dest: /etc/nfsmount.conf
+    mode: "0644"
+
+- name: Default nfsmount to version 4
+  ansible.builtin.copy:
+    src: 90-nfsv4-default.conf
+    dest: /etc/nfsmount.conf.d/90-nfsv4-default.conf
+    mode: "0644"
+
+- name: Only enable version 4
+  ansible.builtin.copy:
+    src: 90-nfsv4-only.conf
+    dest: /etc/nfs.conf.d/90-nfsv4-only.conf
+    mode: "0644"
+
+- name: Mask rpcbind services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    masked: true
+    state: stopped
+  with_items:
+    - rpc-statd.service
+    - rpcbind.service
+    - rpcbind.socket
+
+- name: Include server tasks
+  ansible.builtin.include_tasks: server.yml
+  when: nfs_server

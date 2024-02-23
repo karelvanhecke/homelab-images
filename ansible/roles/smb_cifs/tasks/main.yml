@@ -1,0 +1,9 @@
+---
+- name: Install cifs-utils
+  ansible.builtin.apt:
+    name: cifs-utils
+  when: not smb_cifs_server
+ 
+- name: Include server tasks
+  ansible.builtin.include_tasks: server.yml
+  when: smb_cifs_server

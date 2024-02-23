@@ -1,0 +1,42 @@
+---
+- name: Install nfs kernel server
+  ansible.builtin.apt:
+    name: nfs-kernel-server
+
+- name: Stop nfs systemd units
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+  with_items:
+    - nfs-server.service
+    - nfsdcld.service
+
+- name: Find all nfs server state files
+  ansible.builtin.find:
+    file_type: any
+    paths:
+      - /var/lib/nfs
+    recurse: true
+  register: nfs_server_files
+
+- name: Remove all nfs server state files
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ nfs_server_files.files }}"
+
+- name: Create nfs-mountd systemd override dir
+  ansible.builtin.file:
+    path: /etc/systemd/system/nfs-mountd.service.d
+    state: directory
+    mode: "0755"
+
+- name: Make sure v4recovery dir exists on nfs-mountd start
+  ansible.builtin.copy:
+    src: 10-create-v4recovery-dir.conf
+    dest: /etc/systemd/system/nfs-mountd.service.d
+    mode: "0644"
+
+- name: daemon reload
+  ansible.builtin.systemd:
+    daemon_reload: true

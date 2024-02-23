@@ -1,0 +1,8 @@
+---
+- name: Include client tasks
+  ansible.builtin.include_tasks: client.yml
+  when: not open_iscsi_server
+
+- name: Include server tasks
+  ansible.builtin.include_tasks: server.yml
+  when: open_iscsi_server

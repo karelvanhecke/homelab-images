@@ -1,0 +1,16 @@
+---
+- name: Install targetcli-fb
+  ansible.builtin.apt:
+    name: targetcli-fb
+    state: present
+
+- name: Restore config on start
+  ansible.builtin.copy:
+    src: target.service
+    dest: /etc/systemd/system/target.service
+    mode: "0644"
+
+- name: Enable target.service
+  ansible.builtin.systemd:
+    name: target.service
+    enabled: true

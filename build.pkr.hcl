@@ -36,6 +36,10 @@ build {
         name = "nameserver"
     }
 
+    source "qemu.debian" {
+        name = "storage"
+    }
+
     provisioner "ansible" {
         playbook_file   = "${path.root}/ansible/${source.name}.yml"
         host_alias      = source.name

@@ -1,0 +1,20 @@
+---
+- name: Install linux headers
+  ansible.builtin.apt:
+    name: linux-headers-{{ zfs_architecture[ansible_architecture] }}
+
+- name: Install zfs dkms module and utils
+  ansible.builtin.apt:
+    name: "{{ pkgs }}"
+  vars:
+    pkgs:
+      - zfs-dkms
+      - zfsutils-linux
+      - zfs-zed
+
+- name: Remove linux headers
+  ansible.builtin.apt:
+    name: linux-headers-*
+    state: absent
+    purge: true
+    autoremove: true

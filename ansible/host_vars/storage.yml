@@ -1,0 +1,6 @@
+---
+apt_enable_contrib: true
+base_cloud_kernel: false
+nfs_server: true
+smb_cifs_server: true
+open_iscsi_server: true

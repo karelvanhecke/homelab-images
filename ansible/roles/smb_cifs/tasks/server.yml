@@ -1,0 +1,53 @@
+---
+- name: Install smb/cifs server packages
+  ansible.builtin.apt:
+    name: "{{ pkgs }}"
+  vars:
+    pkgs:
+      - samba
+      - samba-vfs-modules
+
+- name: Stop smbd
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+  with_items:
+    - nmbd.service
+    - smbd.service
+
+- name: Find all smb server cache and state files
+  ansible.builtin.find:
+    file_type: any
+    paths:
+      - /var/cache/samba
+      - /var/lib/samba
+    recurse: true
+  register: smb_server_files
+
+- name: Remove all smb server cache and state files
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ smb_server_files.files }}"
+
+- name: Create smbd systemd override dir
+  ansible.builtin.file:
+    path: /etc/systemd/system/smbd.service.d
+    state: directory
+    mode: "0755"
+
+- name: Make sure private dir exists on smbd start
+  ansible.builtin.copy:
+    src: 10-create-private-dir.conf
+    dest: /etc/systemd/system/smbd.service.d
+    mode: "0644"
+
+- name: daemon reload
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Replace default smb.conf
+  ansible.builtin.copy:
+    src: smb.conf
+    dest: /etc/samba/smb.conf
+    mode: "0644"
