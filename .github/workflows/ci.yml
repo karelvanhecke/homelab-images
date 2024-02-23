@@ -79,7 +79,7 @@ jobs:
               - ansible/roles/apt
               - ansible/roles/base
               - ansible/roles/chrony
-              - ansible/roles/cloud-init
+              - ansible/roles/cloud_init
               - ansible/roles/networking
               - ansible/roles/sysprep
               - ansible/base.yml
