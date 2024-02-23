@@ -6,4 +6,4 @@
     - base
     - networking
     - chrony
-    - cloud-init
+    - cloud_init
